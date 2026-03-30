@@ -281,6 +281,7 @@ create(char *path, short type, short major, short minor)
 
   return ip;
 }
+#define MAXPATH 128
 
 int
 sys_open(void)
@@ -307,6 +308,37 @@ sys_open(void)
       return -1;
     }
     ilock(ip);
+
+	// syslink implementation
+	if(!(omode & O_NOFOLLOW)){
+	  int depth;
+	  for(depth = 0; depth < 10; depth++){
+		if(ip->type != T_SYMLINK){
+			break;
+		}
+		char target[MAXPATH];
+		int n = readi(ip, target, 0, sizeof(target) - 1);
+		if(n < 0){
+		  iunlockput(ip);
+		  end_op();
+		  return -1;
+		}
+		target[n] = '\0';
+		iunlockput(ip);
+		ip = namei(target);
+		if(ip == 0){
+		  end_op();
+		  return -1;
+		}
+		ilock(ip);
+	  }
+	  if(ip->type == T_SYMLINK){
+		iunlockput(ip);
+		end_op();
+		return -1;
+	  }
+	}
+
     if(ip->type == T_DIR && omode != O_RDONLY){
       iunlockput(ip);
       end_op();
@@ -444,16 +476,36 @@ sys_pipe(void)
 }
 
 int
-sys_symlink(void)
-{
-  char *target, *path;
-
-  if (argstr(0, &target) < 0 || argstr(1, &path) < 0)
-    return -1;
+sys_symlink(void) {
 
   // target =  the string the symlink points to   e.g. "/foo/bar"
   // path =  where to create the symlink          e.g. "/mylink
 
-  // ... your implementation goes here
+  char *target, *path;
+  struct inode *ip;
+
+  if(argstr(0, &target) < 0 || argstr(1, &path) < 0)
+    return -1;
+
+  if(strlen(target) >= MAXPATH){
+	return -1;
+  }
+
+  begin_op();
+
+  ip = create(path, T_SYMLINK, 0, 0);
+  if(ip == 0) {
+      end_op();
+	  return -1;
+  }
+
+  if(writei(ip, target, 0, strlen(target)) != strlen(target)){
+	iunlockput(ip);
+	end_op();
+	return -1;
+  }
+
+  iunlockput(ip);
+  end_op();
   return 0;
 }
