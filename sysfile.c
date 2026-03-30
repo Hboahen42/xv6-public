@@ -442,3 +442,18 @@ sys_pipe(void)
   fd[1] = fd1;
   return 0;
 }
+
+int
+sys_symlink(void)
+{
+  char *target, *path;
+
+  if (argstr(0, &target) < 0 || argstr(1, &path) < 0)
+    return -1;
+
+  // target =  the string the symlink points to   e.g. "/foo/bar"
+  // path =  where to create the symlink          e.g. "/mylink
+
+  // ... your implementation goes here
+  return 0;
+}
