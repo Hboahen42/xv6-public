@@ -2,6 +2,7 @@
 #include "stat.h"
 #include "user.h"
 #include "fs.h"
+#include "fcntl.h"
 
 char*
 fmtname(char *path)
@@ -59,10 +60,18 @@ ls(char *path)
         continue;
       memmove(p, de.name, DIRSIZ);
       p[DIRSIZ] = 0;
-      if(stat(buf, &st) < 0){
-        printf(1, "ls: cannot stat %s\n", buf);
+
+      int sfd = open(buf, O_NOFOLLOW | O_RDONLY);
+      if(sfd < 0){
+        printf(1, "ls: cannot open %s\n", buf);
         continue;
       }
+      if(fstat(sfd, &st) < 0){
+        printf(1, "ls: cannot stat %s\n", buf);
+        close(sfd);
+        continue;
+      }
+      close(sfd);
       printf(1, "%s %d %d %d\n", fmtname(buf), st.type, st.ino, st.size);
     }
     break;

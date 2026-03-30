@@ -291,8 +291,11 @@ sys_open(void)
   struct file *f;
   struct inode *ip;
 
+
   if(argstr(0, &path) < 0 || argint(1, &omode) < 0)
     return -1;
+
+  int real_mode = omode & ~O_NOFOLLOW;
 
   begin_op();
 
@@ -339,7 +342,7 @@ sys_open(void)
 	  }
 	}
 
-    if(ip->type == T_DIR && omode != O_RDONLY){
+    if(ip->type == T_DIR && real_mode != O_RDONLY){
       iunlockput(ip);
       end_op();
       return -1;
